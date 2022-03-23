@@ -36,23 +36,23 @@ Usage
 from a python shell:
 
 - Initial Setup
->>> from PyCarlink import PyCarlink
->>> email = 'example@email.com'
->>> password = 'yourpassword'
->>> client = PyCarlink(email, password)
+from PyCarlink import PyCarlink
+email = 'example@email.com'
+password = 'yourpassword'
+client = PyCarlink(email, password)
 
 - Available Commands
 Get the status of your vehicle in a json format
->>> client.get_asset_status()
+client.get_asset_status()
 
 Start your engine. Returns either Success or Failure
->>> client.start_engine()
+client.start_engine()
 
 Stop your engine. Returns either Success or Failure
->>> client.stop_engine()
+client.stop_engine()
 
 Lock Your Doors. Returns either Success or Failure
->>> client.lock_doors()
+client.lock_doors()
 
 Unlock Your Doors. Returns either Success or Failure
->>> client.unlock_doors()
+client.unlock_doors()
