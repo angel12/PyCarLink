@@ -6,7 +6,21 @@ import logging
 import time
 import sys
 import json
+#
+# Carlink uses m2msuite for their application / API. Documentation can be found here:
+# https://www.m2msuite.com/Api/Rest
+# 
+# I am a very green (read: new) programmer, so this code is more than likely just plain messy 
+# and inefficient. Feel free to help clean it up.
+#
+# Projects I used as guidelines for this project:
+# pycarwings2 - https://github.com/filcole/pycarwings2
+# pymazda - https://github.com/bdr99/pymazda
+#
 
+#
+# From https://stackoverflow.com/a/56081104
+#
 def base64_encode(string: str) -> str:
     '''
     Encodes the provided byte string into base64
