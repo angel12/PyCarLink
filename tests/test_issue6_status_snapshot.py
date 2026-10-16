@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from pycarlink.PyCarLink import PyCarlink
+from pycarlink.PyCarLink import MalformedResponseError, PyCarlink
 
 
 STATUS_FIELDS = {
@@ -80,7 +80,7 @@ class StatusSnapshotTests(unittest.TestCase):
                 self.get.side_effect = None
                 self.get.return_value = Mock(json=Mock(return_value=incomplete))
 
-                with self.assertRaises(KeyError):
+                with self.assertRaisesRegex(MalformedResponseError, missing_field):
                     client.get_asset_status()
 
                 self.assertEqual(vars(client), previous_state)
