@@ -66,3 +66,31 @@ Lock Your Doors. Returns either Success or Failure
 Unlock Your Doors. Returns either Success or Failure
 
 `client.unlock_doors()`
+
+## HTTP timeout policy and ambiguous commands
+
+Every HTTP GET and POST, including requests during construction and command
+polling, uses a `(connect, read)` timeout in seconds. The default is `(5.0, 30.0)`;
+existing `PyCarlink(email, password)` calls remain valid. Configure both limits
+when constructing the client:
+
+```python
+client = PyCarlink(email, password, timeout=(3.0, 20.0))
+```
+
+The timeout must be a two-element tuple of positive finite Python `int` or `float`
+values within the float range. Invalid values (including `None`, zero, negative
+values, booleans, NaN, and infinity) raise `ValueError` before any network request.
+
+`requests.exceptions.Timeout` (including `ConnectTimeout` and `ReadTimeout`)
+propagates unchanged to the caller, including from the constructor. Catch it
+around construction or individual operations as appropriate. PyCarLink does not
+automatically retry timed-out requests. In particular, a command POST may have
+reached the vehicle even if its response timed out: do **not** blindly resubmit
+it. A polling timeout also leaves the command outcome unknown; it does not cause
+another command POST.
+
+These are Requests connect and read-inactivity limits, **not** a total wall-clock
+deadline for an operation. DNS resolution, multiple connection attempts,
+redirects, and a response that keeps delivering data can extend elapsed time;
+existing command polling sleeps are separate from the HTTP limits.

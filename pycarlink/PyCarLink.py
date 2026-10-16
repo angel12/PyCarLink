@@ -37,7 +37,12 @@ log = logging.getLogger(__name__)
 class PyCarlink(object):
     # Connects to Carlink
 
-    def __init__(self, email, password):
+    def __init__(self, email, password, timeout=(5.0, 30.0)):
+        if (not isinstance(timeout, tuple) or len(timeout) != 2
+                or any(type(value) not in (int, float)
+                       or not 0 < value <= sys.float_info.max for value in timeout)):
+            raise ValueError('timeout must be a (connect, read) tuple of positive finite seconds')
+        self.timeout = timeout
         self.email = email
         self.password = password
         self.login_auth_header = None
@@ -80,14 +85,14 @@ class PyCarlink(object):
 #
     def retrieve_api_key(self):
         url = BASE_URL + '100007/Access'
-        response = requests.get(url, headers=self.login_auth_header)
+        response = requests.get(url, headers=self.login_auth_header, timeout=self.timeout)
         json_data = response.json()
         # Pull API key and Account ID from response
         return json_data["APIKey"]
 
     def retrieve_account_id(self):
         url = BASE_URL + '100007/Access'
-        response = requests.get(url, headers=self.login_auth_header)
+        response = requests.get(url, headers=self.login_auth_header, timeout=self.timeout)
         json_data = response.json()      
         # Pull API key and Account ID from response
         return json_data["AccountID"]
@@ -105,7 +110,7 @@ class PyCarlink(object):
 
     def get_asset_0(self):
         url = BASE_URL + str(self.account_id) + '/Assets'
-        response = requests.get(url, headers=self.api_auth_header)
+        response = requests.get(url, headers=self.api_auth_header, timeout=self.timeout)
         json_data = response.json()      
         # Pull API key and Account ID from response. This will only return 
         # the first asset from this response, I don't have the knowledge to 
@@ -114,7 +119,7 @@ class PyCarlink(object):
     
     def get_asset_status(self):
         url = BASE_URL + str(self.account_id) + '/DeviceStatus/' + str(self.asset_id)
-        response = requests.get(url, headers=self.api_auth_header)
+        response = requests.get(url, headers=self.api_auth_header, timeout=self.timeout)
         json_data = response.json()
         self.gpsstatus = json_data['GpsStatus']
         self.gpsdatetime = json_data['GpsDateTime']
@@ -138,7 +143,7 @@ class PyCarlink(object):
     def start_engine(self):
         url = BASE_URL + str(self.account_id) + '/Commands'
         body = {"DeviceID":self.asset_id,"Type":"EngineStart"}
-        response = requests.post(url, json=body, headers=self.api_auth_header)
+        response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
         data = response.json()
         self.command_id = data['ID']
         time.sleep(10)
@@ -154,7 +159,7 @@ class PyCarlink(object):
     def stop_engine(self):
         url = BASE_URL + str(self.account_id) + '/Commands'
         body = {"DeviceID":self.asset_id,"Type":"EngineStop"}
-        response = requests.post(url, json=body, headers=self.api_auth_header)
+        response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
         data = response.json()
         self.command_id = data['ID']
         time.sleep(10)
@@ -170,7 +175,7 @@ class PyCarlink(object):
     def lock_doors(self):
         url = BASE_URL + str(self.account_id) + '/Commands'
         body = {"DeviceID":self.asset_id,"Type":"DoorLock"}
-        response = requests.post(url, json=body, headers=self.api_auth_header)
+        response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
         data = response.json()
         self.command_id = data['ID']
         time.sleep(10)
@@ -186,7 +191,7 @@ class PyCarlink(object):
     def unlock_doors(self):
         url = BASE_URL + str(self.account_id) + '/Commands'
         body = {"DeviceID":self.asset_id,"Type":"DoorUnLock"}
-        response = requests.post(url, json=body, headers=self.api_auth_header)
+        response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
         data = response.json()
         self.command_id = data['ID']
         time.sleep(10)
@@ -201,7 +206,7 @@ class PyCarlink(object):
     def command_status(self, command_id):
         command_id_status = command_id
         url = BASE_URL + str(self.account_id) + '/Commands/' + str(command_id_status)
-        statusresponse = requests.get(url, headers=self.api_auth_header)
+        statusresponse = requests.get(url, headers=self.api_auth_header, timeout=self.timeout)
         json_response = statusresponse.json()
         status = json_response['Status']
         return status
