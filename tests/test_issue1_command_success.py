@@ -14,6 +14,12 @@ class CommandSuccessTests(unittest.TestCase):
         ("unlock_doors", "DoorUnLock"),
     )
 
+    def setUp(self):
+        network = patch("requests.sessions.Session.request",
+                        side_effect=AssertionError("Real network is forbidden"))
+        network.start()
+        self.addCleanup(network.stop)
+
     def assert_command_result(self, method, command_type, statuses, expected):
         # Exercise normal initialization without authenticating or fetching data.
         with (
@@ -59,11 +65,11 @@ class CommandSuccessTests(unittest.TestCase):
                     method, command_type, ["Pending", "Success"], "Success"
                 )
 
-    def test_unsuccessful_polls_preserve_failure_result(self):
+    def test_pending_polls_return_unknown_timeout(self):
         for method, command_type in self.COMMANDS:
             with self.subTest(method=method):
                 self.assert_command_result(
-                    method, command_type, ["Pending", "Pending"], "Command Failed"
+                    method, command_type, ["Pending", "Pending"], "Command Timed Out"
                 )
 
 

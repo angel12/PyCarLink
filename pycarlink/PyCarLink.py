@@ -151,14 +151,7 @@ class PyCarlink(object):
         response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
         data = response.json()
         self.command_id = data['ID']
-        time.sleep(10)
-        getstatus = self.command_status(self.command_id)
-        if "Success" not in getstatus:
-            time.sleep(10)
-            getstatus = self.command_status(self.command_id)
-            if "Success" not in getstatus:
-                return "Command Failed"
-        return getstatus
+        return self._poll_command(self.command_id)
 
 
     def stop_engine(self):
@@ -167,14 +160,7 @@ class PyCarlink(object):
         response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
         data = response.json()
         self.command_id = data['ID']
-        time.sleep(10)
-        getstatus = self.command_status(self.command_id)
-        if "Success" not in getstatus:
-            time.sleep(10)
-            getstatus = self.command_status(self.command_id)
-            if "Success" not in getstatus:
-                return "Command Failed"
-        return getstatus
+        return self._poll_command(self.command_id)
 
 
     def lock_doors(self):
@@ -183,14 +169,7 @@ class PyCarlink(object):
         response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
         data = response.json()
         self.command_id = data['ID']
-        time.sleep(10)
-        getstatus = self.command_status(self.command_id)
-        if "Success" not in getstatus:
-            time.sleep(10)
-            getstatus = self.command_status(self.command_id)
-            if "Success" not in getstatus:
-                return "Command Failed"
-        return getstatus
+        return self._poll_command(self.command_id)
 
 
     def unlock_doors(self):
@@ -199,14 +178,20 @@ class PyCarlink(object):
         response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
         data = response.json()
         self.command_id = data['ID']
-        time.sleep(10)
-        getstatus = self.command_status(self.command_id)
-        if "Success" not in getstatus:
+        return self._poll_command(self.command_id)
+
+    def _poll_command(self, command_id):
+        """Poll an existing command; exhaustion does not establish failure."""
+        for _ in range(2):
             time.sleep(10)
-            getstatus = self.command_status(self.command_id)
-            if "Success" not in getstatus:
+            status = self.command_status(command_id)
+            if status == "Success":
+                return status
+            # API contract: Success, Pending, Processing or a failure code.
+            # Assume other statuses are failure codes, not new pending states.
+            if status not in ("Pending", "Processing"):
                 return "Command Failed"
-        return getstatus
+        return "Command Timed Out"
 
     def command_status(self, command_id):
         command_id_status = command_id
