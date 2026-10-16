@@ -36,7 +36,13 @@ class ResponseErrorsTests(unittest.TestCase):
             mocker = patch(target, side_effect=AssertionError('Unexpected call'))
             setattr(self, name, mocker.start())
             self.addCleanup(mocker.stop)
-        self.client = object.__new__(library.PyCarlink)
+        with (
+            patch.object(library.PyCarlink, 'retrieve_api_key', return_value='offline-key'),
+            patch.object(library.PyCarlink, 'retrieve_account_id', return_value=123),
+            patch.object(library.PyCarlink, 'get_asset_0', return_value=456),
+            patch.object(library.PyCarlink, 'get_asset_status', return_value={}),
+        ):
+            self.client = library.PyCarlink('offline@example.invalid', 'dummy')
         self.client.__dict__.update(
             login_auth_header={'Authorization': 'secret-login'},
             api_auth_header={'Authorization': 'secret-api'},
