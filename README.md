@@ -65,19 +65,19 @@ Get the status of your vehicle in a json format
 
 `client.get_asset_status()`
 
-Start your engine. Returns either Success or Failure
+Start your engine. See command outcomes below.
 
 `client.start_engine()`
 
-Stop your engine. Returns either Success or Failure
+Stop your engine. See command outcomes below.
 
 `client.stop_engine()`
 
-Lock Your Doors. Returns either Success or Failure
+Lock Your Doors. See command outcomes below.
 
 `client.lock_doors()`
 
-Unlock Your Doors. Returns either Success or Failure
+Unlock Your Doors. See command outcomes below.
 
 `client.unlock_doors()`
 
@@ -108,3 +108,32 @@ These are Requests connect and read-inactivity limits, **not** a total wall-cloc
 deadline for an operation. DNS resolution, multiple connection attempts,
 redirects, and a response that keeps delivering data can extend elapsed time;
 existing command polling sleeps are separate from the HTTP limits.
+
+### Command outcomes
+
+All four command methods submit the physical command once, retain its ID in
+`client.command_id`, and poll its status at most twice, waiting 10 seconds before
+each poll. They return:
+
+- `"Success"`: the API reported exactly `Success` on either poll.
+- `"Command Failed"`: the API reported a terminal failure code; polling stops
+  immediately, including when the first poll reports failure.
+- `"Command Timed Out"`: both polls were unresolved (`Pending` or `Processing`).
+  This replaces the old `"Command Failed"` result for exhausted pending polls.
+  It means the outcome is **unknown**, not that the vehicle command failed or
+  was cancelled. It describes polling exhaustion, not an HTTP request timeout.
+
+The [M2M Suite v1.1 command-status documentation](https://www.m2msuite.com/Api/Ajax/v1.1/application/commands?uri=1&method=get)
+defines the required `Status` as “Success, Pending, Processing or a failure code”.
+For responses conforming to that contract, this library assumes other status
+values are terminal failure codes, not additional pending states. The source
+does not enumerate specific failure codes; test failure values are synthetic.
+This assumption would need revisiting if the API adds nonterminal states.
+
+No command is automatically resubmitted. After a timeout, save the command ID
+before submitting another command (which overwrites `client.command_id`) and
+check the existing command later with `client.command_status(command_id)`.
+That method returns the raw API status without submitting a physical command.
+Do not blindly retry a physical action: the original may still execute.
+These behaviors are covered by offline tests; live vehicle execution has not
+been verified.
