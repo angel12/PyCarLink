@@ -116,23 +116,28 @@ class PyCarlink(object):
         url = BASE_URL + str(self.account_id) + '/DeviceStatus/' + str(self.asset_id)
         response = requests.get(url, headers=self.api_auth_header)
         json_data = response.json()
-        self.gpsstatus = json_data['GpsStatus']
-        self.gpsdatetime = json_data['GpsDateTime']
-        self.latitude = json_data["Latitude"]
-        self.longitude = json_data["Longitude"]
-        self.speed = json_data["Speed"]
-        self.heading = json_data["Heading"]
-        self.externalvoltage = json_data['ExternalVoltage']
-        self.rssi = json_data["Rssi"]
-        self.doorstatus = json_data['DoorStatus']
-        self.enginestatus = json_data['EngineStatus']
-        self.ingnitionstatus = json_data['IgnitionStatus']
-        self.alarm = json_data['Alarm']
-        self.engineshutdowndatetime = json_data['EngineShutdownDateTime']
-        self.bypassupdateddatetime = json_data['BypassUpdatedDateTime']
-        self.bypasstemperature = json_data["BypassTemperature"]
-        self.online = json_data['Online']
-     
+        # Read every required field before publishing any part of the snapshot.
+        status = {
+            'gpsstatus': json_data['GpsStatus'],
+            'gpsdatetime': json_data['GpsDateTime'],
+            'latitude': json_data['Latitude'],
+            'longitude': json_data['Longitude'],
+            'speed': json_data['Speed'],
+            'heading': json_data['Heading'],
+            'externalvoltage': json_data['ExternalVoltage'],
+            'rssi': json_data['Rssi'],
+            'doorstatus': json_data['DoorStatus'],
+            'enginestatus': json_data['EngineStatus'],
+            'ingnitionstatus': json_data['IgnitionStatus'],
+            'alarm': json_data['Alarm'],
+            'engineshutdowndatetime': json_data['EngineShutdownDateTime'],
+            'bypassupdateddatetime': json_data['BypassUpdatedDateTime'],
+            'bypasstemperature': json_data['BypassTemperature'],
+            'online': json_data['Online'],
+            'asset_status': json_data,
+        }
+        self.__dict__.update(status)
+
         return json_data
 
     def start_engine(self):
