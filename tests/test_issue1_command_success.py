@@ -15,11 +15,14 @@ class CommandSuccessTests(unittest.TestCase):
     )
 
     def assert_command_result(self, method, command_type, statuses, expected):
-        # Bypass initialization, which otherwise authenticates against the API.
-        client = PyCarlink.__new__(PyCarlink)
-        client.account_id = 123
-        client.asset_id = 456
-        client.api_auth_header = {"Authorization": "offline-test"}
+        # Exercise normal initialization without authenticating or fetching data.
+        with (
+            patch.object(PyCarlink, "retrieve_api_key", return_value="offline-key"),
+            patch.object(PyCarlink, "retrieve_account_id", return_value=123),
+            patch.object(PyCarlink, "get_asset_0", return_value=456),
+            patch.object(PyCarlink, "get_asset_status", return_value={}),
+        ):
+            client = PyCarlink("offline@example.invalid", "dummy")
         responses = [Mock() for _ in statuses]
         for response, status in zip(responses, statuses):
             response.json.return_value = {"Status": status}
@@ -32,17 +35,16 @@ class CommandSuccessTests(unittest.TestCase):
             post.return_value.json.return_value = {"ID": 789}
             result = getattr(client, method)()
             self.assertEqual(result, expected)
-            post.assert_called_once_with(
-                BASE_URL + "123/Commands",
-                json={"DeviceID": 456, "Type": command_type},
-                headers=client.api_auth_header,
-            )
+            post.assert_called_once()
+            self.assertEqual(post.call_args.args, (BASE_URL + "123/Commands",))
+            self.assertEqual(post.call_args.kwargs["json"],
+                             {"DeviceID": 456, "Type": command_type})
+            self.assertEqual(post.call_args.kwargs["headers"], client.api_auth_header)
             self.assertEqual(client.command_id, 789)
-            self.assertEqual(
-                get.call_args_list,
-                [call(BASE_URL + "123/Commands/789", headers=client.api_auth_header)]
-                * len(statuses),
-            )
+            self.assertEqual(get.call_count, len(statuses))
+            for request in get.call_args_list:
+                self.assertEqual(request.args, (BASE_URL + "123/Commands/789",))
+                self.assertEqual(request.kwargs["headers"], client.api_auth_header)
             self.assertEqual(sleep.call_args_list, [call(10)] * len(statuses))
 
     def test_first_poll_success(self):
