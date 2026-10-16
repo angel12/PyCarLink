@@ -31,13 +31,27 @@ Currently this library is working with the following features:
 
 This is an unoficial API implementation, so this project could stop working at any moment.
 
+Installation
+
+Install from a checkout of this repository (this also installs `requests`):
+
+```sh
+git clone https://github.com/angel12/PyCarLink.git
+cd PyCarLink
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+python -m pip install .
+```
+
 Usage
 
-from a python shell:
+From a Python shell in the environment where you installed the package (no need
+to stay in the checkout directory). Importing does not contact the service;
+constructing a client logs in and retrieves vehicle data.
 
 - Initial Setup
 
-`from PyCarlink import PyCarlink`
+`from pycarlink import PyCarlink`
 
 `email = 'example@email.com'`
 
