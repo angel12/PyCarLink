@@ -148,8 +148,7 @@ class PyCarlink(object):
             getstatus = self.command_status(self.command_id)
             if "Success" not in getstatus:
                 return "Command Failed"
-        else:
-            return getstatus
+        return getstatus
 
 
     def stop_engine(self):
@@ -165,8 +164,7 @@ class PyCarlink(object):
             getstatus = self.command_status(self.command_id)
             if "Success" not in getstatus:
                 return "Command Failed"
-        else:
-            return getstatus
+        return getstatus
 
 
     def lock_doors(self):
@@ -182,8 +180,7 @@ class PyCarlink(object):
             getstatus = self.command_status(self.command_id)
             if "Success" not in getstatus:
                 return "Command Failed"
-        else:
-            return getstatus
+        return getstatus
 
 
     def unlock_doors(self):
@@ -199,8 +196,7 @@ class PyCarlink(object):
             getstatus = self.command_status(self.command_id)
             if "Success" not in getstatus:
                 return "Command Failed"
-        else:
-            return getstatus
+        return getstatus
 
     def command_status(self, command_id):
         command_id_status = command_id
