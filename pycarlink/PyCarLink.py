@@ -34,6 +34,41 @@ BASE_URL = "https://api.m2msuite.com/v1.1/109.3/"
 
 log = logging.getLogger(__name__)
 
+class MalformedResponseError(ValueError):
+    """The service returned JSON or response fields this client cannot use."""
+
+
+class NoAssetsError(ValueError):
+    """The account has no assets for this client to select."""
+
+
+def _parse_response(response, expected_type: type = dict):
+    response.raise_for_status()
+    try:
+        data = response.json()
+    except ValueError:
+        raise MalformedResponseError('Response must contain valid JSON.') from None
+    if not isinstance(data, expected_type):
+        shape = 'array' if expected_type is list else 'object'
+        raise MalformedResponseError('Response must be a JSON ' + shape + '.')
+    return data
+
+
+def _required_field(data, field, identifier=False):
+    if not isinstance(data, dict):
+        raise MalformedResponseError('Response item must be a JSON object.')
+    if field not in data:
+        raise MalformedResponseError('Response is missing required field ' + field + '.')
+    value = data[field]
+    valid = isinstance(value, str) and bool(value.strip())
+    if identifier:
+        valid = valid or type(value) is int
+    if not valid:
+        expected = 'a nonempty string or integer' if identifier else 'a nonempty string'
+        raise MalformedResponseError('Response field ' + field + ' must be ' + expected + '.')
+    return value
+
+
 class PyCarlink(object):
     # Connects to Carlink
 
@@ -86,16 +121,16 @@ class PyCarlink(object):
     def retrieve_api_key(self):
         url = BASE_URL + '100007/Access'
         response = requests.get(url, headers=self.login_auth_header, timeout=self.timeout)
-        json_data = response.json()
+        json_data = _parse_response(response)
         # Pull API key and Account ID from response
-        return json_data["APIKey"]
+        return _required_field(json_data, 'APIKey')
 
     def retrieve_account_id(self):
         url = BASE_URL + '100007/Access'
         response = requests.get(url, headers=self.login_auth_header, timeout=self.timeout)
-        json_data = response.json()      
+        json_data = _parse_response(response)
         # Pull API key and Account ID from response
-        return json_data["AccountID"]
+        return _required_field(json_data, 'AccountID', identifier=True)
 
     def create_api_header(self):
         api_key_base = '@apikey:' + self.api_key
@@ -111,17 +146,29 @@ class PyCarlink(object):
     def get_asset_0(self):
         url = BASE_URL + str(self.account_id) + '/Assets'
         response = requests.get(url, headers=self.api_auth_header, timeout=self.timeout)
-        json_data = response.json()      
+        json_data = _parse_response(response, list)
         # Pull API key and Account ID from response. This will only return 
         # the first asset from this response, I don't have the knowledge to 
         # add multiples
-        return json_data[0]["ID"]
+        if not json_data:
+            raise NoAssetsError('Account has no assets; add a vehicle before using this client.')
+        return _required_field(json_data[0], 'ID', identifier=True)
     
     def get_asset_status(self):
         url = BASE_URL + str(self.account_id) + '/DeviceStatus/' + str(self.asset_id)
         response = requests.get(url, headers=self.api_auth_header, timeout=self.timeout)
-        json_data = response.json()
+        json_data = _parse_response(response)
         # Read every required field before publishing any part of the snapshot.
+        required = (
+            'GpsStatus', 'GpsDateTime', 'Latitude', 'Longitude', 'Speed', 'Heading',
+            'ExternalVoltage', 'Rssi', 'DoorStatus', 'EngineStatus', 'IgnitionStatus',
+            'Alarm', 'EngineShutdownDateTime', 'BypassUpdatedDateTime',
+            'BypassTemperature', 'Online',
+        )
+        for field in required:
+            if field not in json_data:
+                raise MalformedResponseError(
+                    'DeviceStatus response is missing required field ' + field + '.')
         status = {
             'gpsstatus': json_data['GpsStatus'],
             'gpsdatetime': json_data['GpsDateTime'],
@@ -149,8 +196,8 @@ class PyCarlink(object):
         url = BASE_URL + str(self.account_id) + '/Commands'
         body = {"DeviceID":self.asset_id,"Type":"EngineStart"}
         response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
-        data = response.json()
-        self.command_id = data['ID']
+        data = _parse_response(response)
+        self.command_id = _required_field(data, 'ID', identifier=True)
         return self._poll_command(self.command_id)
 
 
@@ -158,8 +205,8 @@ class PyCarlink(object):
         url = BASE_URL + str(self.account_id) + '/Commands'
         body = {"DeviceID":self.asset_id,"Type":"EngineStop"}
         response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
-        data = response.json()
-        self.command_id = data['ID']
+        data = _parse_response(response)
+        self.command_id = _required_field(data, 'ID', identifier=True)
         return self._poll_command(self.command_id)
 
 
@@ -167,8 +214,8 @@ class PyCarlink(object):
         url = BASE_URL + str(self.account_id) + '/Commands'
         body = {"DeviceID":self.asset_id,"Type":"DoorLock"}
         response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
-        data = response.json()
-        self.command_id = data['ID']
+        data = _parse_response(response)
+        self.command_id = _required_field(data, 'ID', identifier=True)
         return self._poll_command(self.command_id)
 
 
@@ -176,8 +223,8 @@ class PyCarlink(object):
         url = BASE_URL + str(self.account_id) + '/Commands'
         body = {"DeviceID":self.asset_id,"Type":"DoorUnLock"}
         response = requests.post(url, json=body, headers=self.api_auth_header, timeout=self.timeout)
-        data = response.json()
-        self.command_id = data['ID']
+        data = _parse_response(response)
+        self.command_id = _required_field(data, 'ID', identifier=True)
         return self._poll_command(self.command_id)
 
     def _poll_command(self, command_id):
@@ -197,6 +244,6 @@ class PyCarlink(object):
         command_id_status = command_id
         url = BASE_URL + str(self.account_id) + '/Commands/' + str(command_id_status)
         statusresponse = requests.get(url, headers=self.api_auth_header, timeout=self.timeout)
-        json_response = statusresponse.json()
-        status = json_response['Status']
+        json_response = _parse_response(statusresponse)
+        status = _required_field(json_response, 'Status')
         return status

@@ -137,3 +137,41 @@ That method returns the raw API status without submitting a physical command.
 Do not blindly retry a physical action: the original may still execute.
 These behaviors are covered by offline tests; live vehicle execution has not
 been verified.
+
+## Response errors
+
+Errors may be raised during construction as well as later requests. Import the
+library exceptions from `pycarlink.PyCarLink` (the source module):
+
+```python
+from pycarlink.PyCarLink import MalformedResponseError, NoAssetsError
+```
+
+- `requests.exceptions.HTTPError`: an HTTP error response (including 401 or 500).
+  HTTP status is checked before JSON parsing. Check credentials/account access
+  for 401; investigate service availability for server errors.
+- `MalformedResponseError` (a `ValueError`): invalid JSON, an unexpected JSON
+  shape, or a missing/invalid required field. The message identifies the expected
+  shape or field, never response contents, headers, or credentials. Check service
+  compatibility rather than treating this as a successful response.
+- `NoAssetsError` (a `ValueError`): the account's asset list is empty. Add/link a
+  vehicle to the account before constructing the client.
+- Requests timeout and connection exceptions propagate unchanged. This library
+  does not retry failed requests or wrap transport errors.
+
+`APIKey` and command `Status` must be nonblank strings. Account, asset and command
+IDs accept nonblank strings or integers (not booleans); values are not coerced.
+Only the first asset is selected and validated. Device status must contain all
+mapped telemetry keys before the snapshot is published; telemetry values are
+not type-restricted, including nullable values and additional fields.
+
+A failed refresh leaves the previous snapshot and convenience attributes intact.
+A rejected/malformed command submission leaves the previous command ID intact
+and does not sleep or poll. A successful submission followed by a polling error
+retains the accepted command ID and propagates the error. **A response or network
+error does not prove a command was not executed; do not blindly resubmit vehicle
+commands.** See Command outcomes above for polling results.
+
+Requests exceptions retain their normal request/response objects, which may
+contain sensitive headers or bodies. Do not log those objects without redaction.
+Verification is offline; live service compatibility has not been established.
